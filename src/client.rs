@@ -1,4 +1,4 @@
-use std::{io::Read, time::Duration};
+use std::time::Duration;
 
 use rusty_s3::{Credentials, S3Action};
 use ureq::Response;
@@ -26,9 +26,7 @@ impl Client {
     }
 
     pub(crate) fn put<'a>(&self, action: impl S3Action<'a>) -> Result<Response> {
-        Ok(ureq::put(action.sign(Duration::from_secs(60)).as_str())
-            .call()
-            .map_err(Box::new)?)
+        Ok(ureq::put(action.sign(Duration::from_secs(60)).as_str()).call()?)
     }
 
     pub(crate) fn put_with_body<'a>(
@@ -36,9 +34,7 @@ impl Client {
         action: impl S3Action<'a>,
         body: &[u8],
     ) -> Result<Response> {
-        Ok(ureq::put(action.sign(Duration::from_secs(60)).as_str())
-            .send_bytes(body)
-            .map_err(Box::new)?)
+        Ok(ureq::put(action.sign(Duration::from_secs(60)).as_str()).send_bytes(body)?)
     }
 
     pub(crate) fn delete<'a>(&self, action: impl S3Action<'a>) -> Result<Response> {

@@ -11,11 +11,11 @@ pub enum Error {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
-    S3Error(#[from] Box<S3Error>),
+    S3Error(Box<S3Error>),
     #[error(transparent)]
     InternalError(#[from] InternalError),
     #[error(transparent)]
-    HttpError(#[from] Box<ureq::Error>),
+    HttpError(Box<ureq::Error>),
     #[error(transparent)]
     RustyS3(#[from] rusty_s3::BucketError),
     #[error(transparent)]
@@ -24,7 +24,7 @@ pub enum Error {
 
 impl From<S3Error> for Error {
     fn from(error: S3Error) -> Self {
-        Box::new(error).into()
+        Error::S3Error(Box::new(error))
     }
 }
 
