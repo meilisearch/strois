@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, time::Duration};
+use std::time::Duration;
 
 use rusty_s3::{Credentials, S3Action};
 use ureq::Response;
@@ -15,6 +15,20 @@ pub struct Client {
 }
 
 impl Client {
+    /// Create a new `ClientBuilder`.
+    /// It's currently missing its key and secret.
+    ///
+    /// # Example
+    /// ```
+    /// use meilis3arch::ClientBuilder;
+    ///
+    /// let client = ClientBuilder::new("http://localhost:9000")?
+    ///     .key("minio")
+    ///     .secret("minio")
+    ///     .build();
+    /// # Ok::<(), meilis3arch::Error>(())
+    /// ```
+    ///
     pub fn builder(url: impl AsRef<str>) -> Result<ClientBuilder<MissingCred>> {
         ClientBuilder::new(url)
     }
@@ -25,7 +39,9 @@ impl Client {
     }
 
     pub(crate) fn put<'a>(&self, action: impl S3Action<'a>) -> Result<Response> {
-        Ok(ureq::put(action.sign(Duration::from_secs(60)).as_str()).call()?)
+        Ok(ureq::put(action.sign(self.actions_expires_in).as_str())
+            .timeout(self.timeout)
+            .call()?)
     }
 
     pub(crate) fn put_with_body<'a>(
@@ -33,11 +49,15 @@ impl Client {
         action: impl S3Action<'a>,
         body: &[u8],
     ) -> Result<Response> {
-        Ok(ureq::put(action.sign(Duration::from_secs(60)).as_str()).send_bytes(body)?)
+        Ok(ureq::put(action.sign(self.actions_expires_in).as_str())
+            .timeout(self.timeout)
+            .send_bytes(body)?)
     }
 
     pub(crate) fn delete<'a>(&self, action: impl S3Action<'a>) -> Result<Response> {
-        Ok(ureq::delete(action.sign(Duration::from_secs(60)).as_str()).call()?)
+        Ok(ureq::delete(action.sign(self.actions_expires_in).as_str())
+            .timeout(self.timeout)
+            .call()?)
     }
 }
 

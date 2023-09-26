@@ -1,4 +1,4 @@
-use std::{io::Read, time::Duration};
+use std::io::Read;
 
 use http::header::ETAG;
 use rusty_s3::{
@@ -57,7 +57,7 @@ impl Bucket {
         mut content: impl Read,
         part_size: usize,
     ) -> Result<()> {
-        let duration = Duration::from_secs(60 * 60);
+        let duration = self.client.actions_expires_in;
         let action = CreateMultipartUpload::new(&self.bucket, Some(&self.client.cred), path);
         let url = action.sign(duration);
         let resp = ureq::post(url.as_str()).call()?;
