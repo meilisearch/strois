@@ -67,7 +67,7 @@ impl Bucket {
             .map_err(InternalError::S3ReturnedNonUtf8Payload)?;
 
         let multipart =
-            CreateMultipartUpload::parse_response(&body).map_err(InternalError::BadS3Payload2)?;
+            CreateMultipartUpload::parse_response(&body).map_err(InternalError::BadS3Payload)?;
 
         println!(
             "multipart upload created - upload id: {}",

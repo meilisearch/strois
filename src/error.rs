@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, io::BufReader};
 
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -32,8 +32,8 @@ impl From<ureq::Error> for Error {
     fn from(error: ureq::Error) -> Self {
         match error {
             ureq::Error::Status(code, response) => {
-                let reader = response.into_reader();
-                let mut error: S3Error = match serde_xml_rs::de::from_reader(reader) {
+                let reader = BufReader::new(response.into_reader());
+                let mut error: S3Error = match quick_xml::de::from_reader(reader) {
                     Ok(error) => error,
                     Err(e) => return Error::InternalError(InternalError::BadS3Payload(e)),
                 };
@@ -56,9 +56,7 @@ pub enum InternalError {
     #[error("S3 returned non utf8 payload, this shouldn't be possible: `{0}`.`")]
     S3ReturnedNonUtf8Payload(std::io::Error),
     #[error("Could not deserialize S3 payload: `{0}`.`")]
-    BadS3Payload(serde_xml_rs::Error),
-    #[error("Could not deserialize S3 payload: `{0}`.`")]
-    BadS3Payload2(quick_xml::de::DeError),
+    BadS3Payload(quick_xml::de::DeError),
 }
 
 #[derive(Debug, Error, Deserialize)]
@@ -67,6 +65,7 @@ pub enum InternalError {
 pub struct S3Error {
     #[serde(skip)]
     pub status_code: StatusCode,
+    #[serde(with = "quick_xml::serde_helpers::text_content")]
     pub code: S3ErrorCode,
     pub message: String,
     pub bucket_name: String,
@@ -155,6 +154,10 @@ pub enum S3ErrorCode {
 
 impl fmt::Display for S3ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", serde_xml_rs::ser::to_string(self).unwrap())
+        write!(
+            f,
+            "{}",
+            quick_xml::se::to_string(self).expect("This can't fail")
+        )
     }
 }
