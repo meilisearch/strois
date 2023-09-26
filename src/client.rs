@@ -1,23 +1,22 @@
-use std::time::Duration;
+use std::{marker::PhantomData, time::Duration};
 
 use rusty_s3::{Credentials, S3Action};
 use ureq::Response;
 use url::Url;
 
-use crate::{Bucket, Result};
+use crate::{client_builder::MissingCred, Bucket, ClientBuilder, Result};
 
 #[derive(Debug, Clone)]
 pub struct Client {
     pub(crate) addr: Url,
     pub(crate) cred: Credentials,
+    pub(crate) actions_expires_in: Duration,
+    pub(crate) timeout: Duration,
 }
 
 impl Client {
-    pub fn new(addr: impl AsRef<str>, cred: Credentials) -> Result<Self> {
-        Ok(Self {
-            addr: addr.as_ref().parse()?,
-            cred,
-        })
+    pub fn builder(url: impl AsRef<str>) -> Result<ClientBuilder<MissingCred>> {
+        ClientBuilder::new(url)
     }
 
     /// /!\ Do not create the bucket on the S3.
@@ -44,6 +43,8 @@ impl Client {
 
 #[cfg(test)]
 mod test {
+    use crate::ClientBuilder;
+
     use super::*;
     use testcontainers::{clients::Cli, images::minio::MinIO};
 
@@ -52,6 +53,10 @@ mod test {
         let docker = Cli::docker();
         let image = docker.run(MinIO::default());
 
-        let client = Client::new("http://127.0.0.1:9000", Credentials::new("", ""));
+        let client = ClientBuilder::new("http://127.0.0.1:9000")
+            .unwrap()
+            .key("minio")
+            .secret("minio")
+            .build();
     }
 }
