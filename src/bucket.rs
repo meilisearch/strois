@@ -1,6 +1,7 @@
-use std::io::Read;
+use std::io::{BufReader, Read};
 
 use http::header::ETAG;
+
 use rusty_s3::{
     actions::{CompleteMultipartUpload, CreateMultipartUpload, UploadPart},
     S3Action, UrlStyle,
@@ -47,12 +48,34 @@ impl Bucket {
         Ok(())
     }
 
-    pub fn get_object(&self, path: &str) -> Result<Vec<u8>> {
+    #[cfg(feature = "json")]
+    pub fn get_object_json<T>(&self, path: &str) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
         let action = self.bucket.get_object(Some(&self.client.cred), path);
         let response = self.client.get(action)?;
+        Ok(response.into_json()?)
+    }
+
+    pub fn get_object_string(&self, path: &str) -> Result<String> {
+        let action = self.bucket.get_object(Some(&self.client.cred), path);
+        let response = self.client.get(action)?;
+        Ok(response.into_string()?)
+    }
+
+    pub fn get_object_bytes(&self, path: &str) -> Result<Vec<u8>> {
+        let reader = self.get_object_reader(path)?;
+        let mut reader = BufReader::new(reader);
         let mut buffer = Vec::new();
-        response.into_reader().read_to_end(&mut buffer)?;
+        reader.read_to_end(&mut buffer)?;
         Ok(buffer)
+    }
+
+    pub fn get_object_reader(&self, path: &str) -> Result<Box<dyn Read + Send + Sync + 'static>> {
+        let action = self.bucket.get_object(Some(&self.client.cred), path);
+        let response = self.client.get(action)?;
+        Ok(response.into_reader())
     }
 
     pub fn delete_object(&self, path: &str) -> Result<()> {
@@ -79,18 +102,10 @@ impl Bucket {
         let multipart =
             CreateMultipartUpload::parse_response(&body).map_err(InternalError::BadS3Payload)?;
 
-        println!(
-            "multipart upload created - upload id: {}",
-            multipart.upload_id()
-        );
-
         let mut etags = Vec::new();
         let mut buffer = vec![0u8; part_size];
 
-        for part in 1..=10_001 {
-            if part == 10_001 {
-                todo!("Too many part, we must delete all the already uploaded parts");
-            }
+        for part in 1.. {
             let mut buf = &mut buffer[..];
             let mut size = 0;
 
@@ -124,7 +139,6 @@ impl Bucket {
                 .expect("every UploadPart request returns an Etag");
             etags.push(etag.trim_matches('"').to_string());
         }
-        eprintln!("{etags:?}");
 
         let action = CompleteMultipartUpload::new(
             &self.bucket,
@@ -134,12 +148,7 @@ impl Bucket {
             etags.iter().map(|s| s.as_ref()),
         );
         let url = action.sign(duration);
-
-        let resp = ureq::post(url.as_str())
-            .send_string(&dbg!(action.body()))
-            .unwrap();
-        let body = resp.into_string().unwrap();
-        println!("it worked! {body}");
+        ureq::post(url.as_str()).send_string(&action.body())?;
         Ok(())
     }
 }
