@@ -175,6 +175,11 @@ impl<T> ClientBuilder<T> {
         self
     }
 
+    pub fn maybe_token(mut self, token: Option<String>) -> Self {
+        self.token = token;
+        self
+    }
+
     pub fn actions_expires_in(mut self, actions_expires_in: Duration) -> Self {
         self.actions_expires_in = Some(actions_expires_in);
         self

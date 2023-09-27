@@ -1,4 +1,4 @@
-use std::io::{BufReader, Read};
+use std::io::{BufReader, BufWriter, Read, Write};
 
 use http::header::ETAG;
 
@@ -42,54 +42,76 @@ impl Bucket {
         Ok(())
     }
 
-    pub fn put_object(&self, path: &str, content: &[u8]) -> Result<()> {
-        let action = self.bucket.put_object(Some(&self.client.cred), path);
-        self.client.put_with_body(action, content)?;
+    pub fn put_object(&self, path: impl AsRef<str>, content: impl AsRef<[u8]>) -> Result<()> {
+        let action = self
+            .bucket
+            .put_object(Some(&self.client.cred), path.as_ref());
+        self.client.put_with_body(action, content.as_ref())?;
         Ok(())
     }
 
     #[cfg(feature = "json")]
-    pub fn get_object_json<T>(&self, path: &str) -> Result<T>
+    pub fn get_object_json<T>(&self, path: impl AsRef<str>) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
-        let action = self.bucket.get_object(Some(&self.client.cred), path);
+        let action = self
+            .bucket
+            .get_object(Some(&self.client.cred), path.as_ref());
         let response = self.client.get(action)?;
         Ok(response.into_json()?)
     }
 
-    pub fn get_object_string(&self, path: &str) -> Result<String> {
-        let action = self.bucket.get_object(Some(&self.client.cred), path);
+    pub fn get_object_string(&self, path: impl AsRef<str>) -> Result<String> {
+        let action = self
+            .bucket
+            .get_object(Some(&self.client.cred), path.as_ref());
         let response = self.client.get(action)?;
         Ok(response.into_string()?)
     }
 
-    pub fn get_object_bytes(&self, path: &str) -> Result<Vec<u8>> {
-        let reader = self.get_object_reader(path)?;
+    pub fn get_object_bytes(&self, path: impl AsRef<str>) -> Result<Vec<u8>> {
+        let reader = self.get_object_reader(path.as_ref())?;
         let mut reader = BufReader::new(reader);
         let mut buffer = Vec::new();
         reader.read_to_end(&mut buffer)?;
         Ok(buffer)
     }
 
-    pub fn get_object_reader(&self, path: &str) -> Result<Box<dyn Read + Send + Sync + 'static>> {
-        let action = self.bucket.get_object(Some(&self.client.cred), path);
+    pub fn get_object_reader(
+        &self,
+        path: impl AsRef<str>,
+    ) -> Result<Box<dyn Read + Send + Sync + 'static>> {
+        let action = self
+            .bucket
+            .get_object(Some(&self.client.cred), path.as_ref());
         let response = self.client.get(action)?;
         Ok(response.into_reader())
     }
 
-    pub fn delete_object(&self, path: &str) -> Result<()> {
-        let action = self.bucket.delete_object(Some(&self.client.cred), path);
+    pub fn get_object_to_writer(&self, path: impl AsRef<str>, writer: impl Write) -> Result<u64> {
+        let reader = self.get_object_reader(path)?;
+        let mut reader = BufReader::new(reader);
+        let mut writer = BufWriter::new(writer);
+        let size = std::io::copy(&mut reader, &mut writer)?;
+        Ok(size)
+    }
+
+    pub fn delete_object(&self, path: impl AsRef<str>) -> Result<()> {
+        let action = self
+            .bucket
+            .delete_object(Some(&self.client.cred), path.as_ref());
         self.client.delete(action)?;
         Ok(())
     }
 
     pub fn put_object_multipart(
         &self,
-        path: &str,
+        path: impl AsRef<str>,
         mut content: impl Read,
         part_size: usize,
     ) -> Result<()> {
+        let path = path.as_ref();
         let duration = self.client.actions_expires_in;
         let action = CreateMultipartUpload::new(&self.bucket, Some(&self.client.cred), path);
         let url = action.sign(duration);
