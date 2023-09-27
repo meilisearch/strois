@@ -15,6 +15,8 @@ pub struct Bucket {
 }
 
 impl Bucket {
+    /// Create a new bucket.
+    /// /!\ this method doesn't create the bucket on S3. See [`Self::create`] for that.
     pub fn new(client: Client, bucket: impl Into<String>) -> Result<Self> {
         Ok(Self {
             bucket: rusty_s3::Bucket::new(
@@ -43,6 +45,14 @@ impl Bucket {
         let action = self.bucket.put_object(Some(&self.client.cred), path);
         self.client.put_with_body(action, content)?;
         Ok(())
+    }
+
+    pub fn get_object(&self, path: &str) -> Result<Vec<u8>> {
+        let action = self.bucket.get_object(Some(&self.client.cred), path);
+        let response = self.client.get(action)?;
+        let mut buffer = Vec::new();
+        response.into_reader().read_to_end(&mut buffer)?;
+        Ok(buffer)
     }
 
     pub fn delete_object(&self, path: &str) -> Result<()> {
@@ -77,7 +87,10 @@ impl Bucket {
         let mut etags = Vec::new();
         let mut buffer = vec![0u8; part_size];
 
-        for part in 1..=10_000 {
+        for part in 1..=10_001 {
+            if part == 10_001 {
+                todo!("Too many part, we must delete all the already uploaded parts");
+            }
             let mut buf = &mut buffer[..];
             let mut size = 0;
 
@@ -128,5 +141,131 @@ impl Bucket {
         let body = resp.into_string().unwrap();
         println!("it worked! {body}");
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::from_utf8;
+
+    use super::*;
+
+    #[derive(Debug, Clone)]
+    struct TestBucket(pub Bucket);
+
+    impl std::ops::Deref for TestBucket {
+        type Target = Bucket;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl Drop for TestBucket {
+        fn drop(&mut self) {
+            if let Err(e) = self.delete() {
+                eprintln!("{e}");
+            }
+        }
+    }
+
+    fn new_bucket(name: Option<&str>) -> TestBucket {
+        let client = Client::builder("http://127.0.0.1:9000")
+            .unwrap()
+            .key("minioadmin")
+            .secret("minioadmin")
+            .build();
+
+        let bucket = if let Some(name) = name {
+            client.bucket(name).unwrap().create().unwrap()
+        } else {
+            let uuid = uuid::Uuid::new_v4();
+            client.bucket(uuid.to_string()).unwrap().create().unwrap()
+        };
+
+        TestBucket(bucket)
+    }
+
+    #[test]
+    fn create_new_bucket() {
+        let bucket = new_bucket(None);
+        insta::assert_debug_snapshot!(bucket, @r###"
+        TestBucket(
+            Bucket {
+                client: Client {
+                    addr: Url {
+                        scheme: "http",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Ipv4(
+                                127.0.0.1,
+                            ),
+                        ),
+                        port: Some(
+                            9000,
+                        ),
+                        path: "/",
+                        query: None,
+                        fragment: None,
+                    },
+                    cred: Credentials {
+                        key: "minioadmin",
+                    },
+                    actions_expires_in: 3600s,
+                    timeout: 60s,
+                },
+                bucket: Bucket {
+                    base_url: Url {
+                        scheme: "http",
+                        cannot_be_a_base: false,
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Ipv4(
+                                127.0.0.1,
+                            ),
+                        ),
+                        port: Some(
+                            9000,
+                        ),
+                        path: "/3781df60-fccb-41e8-804c-bd0ac233bc4b/",
+                        query: None,
+                        fragment: None,
+                    },
+                    name: "3781df60-fccb-41e8-804c-bd0ac233bc4b",
+                    region: "minio",
+                },
+            },
+        )
+        "###);
+    }
+
+    #[test]
+    fn delete_bucket() {
+        let bucket = new_bucket(None);
+        let ret = bucket.delete();
+        insta::assert_debug_snapshot!(ret, @r###"
+        Ok(
+            (),
+        )
+        "###);
+    }
+
+    #[test]
+    fn put_get_delete_object() {
+        let bucket = new_bucket(None);
+        bucket.put_object("tamo", b"kero").unwrap();
+
+        let content = bucket.get_object("tamo").unwrap();
+        let content = from_utf8(&content).unwrap();
+
+        insta::assert_display_snapshot!(content, @"kero");
+
+        bucket.delete_object("tamo").unwrap();
+
+        let ret = bucket.get_object("tamo").unwrap_err();
+        insta::assert_display_snapshot!(ret, @"NoSuchKey: The specified key does not exist. on 5adaa4ae-e4e5-4254-b676-381046607655");
     }
 }

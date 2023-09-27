@@ -16,4 +16,5 @@ http = "0.2.9"
 quick-xml = { version = "0.30.0", features = ["serialize", "serde-types", "serde"] }
 
 [dev-dependencies]
-testcontainers = "0.14.0"
+insta = "1.32.0"
+uuid = { version = "1.4.1", features = ["v4"] }

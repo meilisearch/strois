@@ -154,10 +154,7 @@ pub enum S3ErrorCode {
 
 impl fmt::Display for S3ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            quick_xml::se::to_string(self).expect("This can't fail")
-        )
+        let s = quick_xml::se::to_string(self).expect("This can't fail");
+        write!(f, "{}", &s[1..s.len() - 2])
     }
 }
