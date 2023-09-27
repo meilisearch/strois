@@ -3,7 +3,10 @@ use std::io::{BufReader, BufWriter, Read, Write};
 use http::header::ETAG;
 
 use rusty_s3::{
-    actions::{CompleteMultipartUpload, CreateMultipartUpload, UploadPart},
+    actions::{
+        list_objects_v2::ListObjectsContent, CompleteMultipartUpload, CreateMultipartUpload,
+        ListObjectsV2, ListObjectsV2Response, UploadPart,
+    },
     S3Action, UrlStyle,
 };
 
@@ -97,6 +100,23 @@ impl Bucket {
         Ok(size)
     }
 
+    pub fn list_objects(&self, prefix: impl AsRef<str>) -> Result<ListObjectIterator> {
+        let mut action = self.bucket.list_objects_v2(Some(&self.client.cred));
+        action.query_mut().insert("prefix", prefix.as_ref());
+        let response = self.client.get(action)?;
+        let response = response.into_string()?;
+        let response = match ListObjectsV2::parse_response(&response) {
+            Ok(response) => response,
+            Err(e) => return Err(InternalError::BadS3Payload(e).into()),
+        };
+
+        Ok(ListObjectIterator {
+            current_bucket: response.contents.into_iter(),
+            continuation_token: response.next_continuation_token,
+            bucket: self.clone(),
+        })
+    }
+
     pub fn delete_object(&self, path: impl AsRef<str>) -> Result<()> {
         let action = self
             .bucket
@@ -172,6 +192,52 @@ impl Bucket {
         let url = action.sign(duration);
         ureq::post(url.as_str()).send_string(&action.body())?;
         Ok(())
+    }
+}
+
+pub struct ListObjectIterator {
+    current_bucket: std::vec::IntoIter<ListObjectsContent>,
+    continuation_token: Option<String>,
+    bucket: Bucket,
+}
+
+impl Iterator for ListObjectIterator {
+    type Item = Result<ListObjectsContent>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.current_bucket.next() {
+            Some(ret) => Some(Ok(ret)),
+            None => {
+                let token = self.continuation_token.as_ref()?;
+                let mut action = self
+                    .bucket
+                    .bucket
+                    .list_objects_v2(Some(&self.bucket.client.cred));
+                action.headers_mut().insert("continuation-token", token);
+                let response = match self.bucket.client.get(action) {
+                    Ok(response) => response,
+                    Err(e) => return Some(Err(e)),
+                };
+                let response = match response.into_string() {
+                    Ok(response) => response,
+                    Err(e) => return Some(Err(e.into())),
+                };
+                let response = match ListObjectsV2::parse_response(&response) {
+                    Ok(response) => response,
+                    Err(e) => return Some(Err(InternalError::BadS3Payload(e).into())),
+                };
+                let ListObjectsV2Response {
+                    contents,
+                    max_keys: _,
+                    common_prefixes: _,
+                    next_continuation_token,
+                    start_after: _,
+                } = response;
+                self.continuation_token = next_continuation_token;
+                self.current_bucket = contents.into_iter();
+                self.next()
+            }
+        }
     }
 }
 
