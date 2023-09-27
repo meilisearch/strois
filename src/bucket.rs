@@ -243,8 +243,6 @@ impl Iterator for ListObjectIterator {
 
 #[cfg(test)]
 mod test {
-    use std::str::from_utf8;
-
     use super::*;
 
     #[derive(Debug, Clone)]
@@ -266,12 +264,28 @@ mod test {
         }
     }
 
+    macro_rules! new_bucket {
+        () => {{
+            fn f() {}
+            fn type_name_of<T>(_: T) -> &'static str {
+                std::any::type_name::<T>()
+            }
+            let name = type_name_of(f);
+            let name = &name[..name.len() - 3];
+            let name = name.replace("::", "-");
+            let name = name.replace("_", "-");
+            new_bucket(Some(&format!("{name}")))
+        }};
+    }
+
     fn new_bucket(name: Option<&str>) -> TestBucket {
         let client = Client::builder("http://127.0.0.1:9000")
             .unwrap()
             .key("minioadmin")
             .secret("minioadmin")
             .build();
+
+        println!("Creating a bucket of name: {:?}", name);
 
         let bucket = if let Some(name) = name {
             client.bucket(name).unwrap().create().unwrap()
@@ -285,7 +299,7 @@ mod test {
 
     #[test]
     fn create_new_bucket() {
-        let bucket = new_bucket(None);
+        let bucket = new_bucket!();
         insta::assert_debug_snapshot!(bucket, @r###"
         TestBucket(
             Bucket {
@@ -327,11 +341,11 @@ mod test {
                         port: Some(
                             9000,
                         ),
-                        path: "/3781df60-fccb-41e8-804c-bd0ac233bc4b/",
+                        path: "/meilis3arch-bucket-test-create-new-bucket/",
                         query: None,
                         fragment: None,
                     },
-                    name: "3781df60-fccb-41e8-804c-bd0ac233bc4b",
+                    name: "meilis3arch-bucket-test-create-new-bucket",
                     region: "minio",
                 },
             },
@@ -341,7 +355,7 @@ mod test {
 
     #[test]
     fn delete_bucket() {
-        let bucket = new_bucket(None);
+        let bucket = new_bucket!();
         let ret = bucket.delete();
         insta::assert_debug_snapshot!(ret, @r###"
         Ok(
@@ -352,17 +366,16 @@ mod test {
 
     #[test]
     fn put_get_delete_object() {
-        let bucket = new_bucket(None);
+        let bucket = new_bucket!();
         bucket.put_object("tamo", b"kero").unwrap();
 
-        let content = bucket.get_object("tamo").unwrap();
-        let content = from_utf8(&content).unwrap();
+        let content = bucket.get_object_string("tamo").unwrap();
 
         insta::assert_display_snapshot!(content, @"kero");
 
         bucket.delete_object("tamo").unwrap();
 
-        let ret = bucket.get_object("tamo").unwrap_err();
-        insta::assert_display_snapshot!(ret, @"NoSuchKey: The specified key does not exist. on 5adaa4ae-e4e5-4254-b676-381046607655");
+        let ret = bucket.get_object_string("tamo").unwrap_err();
+        insta::assert_display_snapshot!(ret, @r###"NoSuchKey: The specified key does not exist. on Some("meilis3arch-bucket-test-put-get-delete-object")"###);
     }
 }

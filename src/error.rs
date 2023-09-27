@@ -61,14 +61,14 @@ pub enum InternalError {
 
 #[derive(Debug, Error, Deserialize)]
 #[serde(rename_all = "PascalCase")]
-#[error("{code}: {message} on {bucket_name}")]
+#[error("{code}: {message} on {bucket_name:?}")]
 pub struct S3Error {
     #[serde(skip)]
     pub status_code: StatusCode,
     #[serde(with = "quick_xml::serde_helpers::text_content")]
     pub code: S3ErrorCode,
     pub message: String,
-    pub bucket_name: String,
+    pub bucket_name: Option<String>,
     pub resource: String,
     pub request_id: String,
     pub host_id: String,
