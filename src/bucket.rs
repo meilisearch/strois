@@ -12,6 +12,7 @@ use rusty_s3::{
 
 use crate::{
     builder::MissingCred, error::InternalError, Builder, Client, Error, Result, S3ErrorCode,
+    UserError,
 };
 
 #[derive(Debug, Clone)]
@@ -101,11 +102,8 @@ impl Bucket {
     }
 
     pub fn get_object_string(&self, path: impl AsRef<str>) -> Result<String> {
-        let action = self
-            .bucket
-            .get_object(Some(&self.client.cred), path.as_ref());
-        let response = self.client.get(action)?;
-        Ok(response.into_string()?)
+        let bytes = self.get_object_bytes(path)?;
+        Ok(String::from_utf8(bytes).map_err(UserError::PayloadCouldNotBeConvertedToString)?)
     }
 
     pub fn get_object_bytes(&self, path: impl AsRef<str>) -> Result<Vec<u8>> {

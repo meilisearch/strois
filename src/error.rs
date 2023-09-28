@@ -1,4 +1,4 @@
-use std::{fmt, io::BufReader};
+use std::{fmt, io::BufReader, string::FromUtf8Error};
 
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -47,8 +47,8 @@ impl From<ureq::Error> for Error {
 
 #[derive(Debug, Error)]
 pub enum UserError {
-    #[error("Bucket `{0}` already exists.`")]
-    BucketAlreadyExists(String),
+    #[error("Payload could not be converted to utf-8 string: `{0}`.")]
+    PayloadCouldNotBeConvertedToString(FromUtf8Error),
 }
 
 #[derive(Debug, Error)]
