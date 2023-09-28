@@ -3,7 +3,8 @@ name = "strois"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["cli"]
 
 [dependencies]
 ureq = { version = "2.7.1" }

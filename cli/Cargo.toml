@@ -1,0 +1,20 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+default-run = "strois"
+
+[[bin]]
+name = "strois"
+path = "src/main.rs"
+
+[dependencies]
+anstyle = "1.0.2"
+atty = "0.2.14"
+clap = { version = "4.4.2", features = ["derive"] }
+colored = "2.0.4"
+env_logger = "0.10.0"
+log = "0.4.20"
+miette = { version = "5.10.0", features = ["fancy", "owo-colors"] }
+strois = { path = "../" }
