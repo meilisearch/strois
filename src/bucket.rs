@@ -10,7 +10,9 @@ use rusty_s3::{
     S3Action, UrlStyle,
 };
 
-use crate::{error::InternalError, Client, Error, Result, S3ErrorCode};
+use crate::{
+    builder::MissingCred, error::InternalError, Builder, Client, Error, Result, S3ErrorCode,
+};
 
 #[derive(Debug, Clone)]
 pub struct Bucket {
@@ -19,6 +21,24 @@ pub struct Bucket {
 }
 
 impl Bucket {
+    /// Create a new [`Builder`].
+    /// It's currently missing its key and secret.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .bucket("tamo");
+    /// # Ok::<(), strois::Error>(())
+    /// ```
+    ///
+    pub fn builder(url: impl AsRef<str>) -> Result<Builder<MissingCred>> {
+        Builder::new(url)
+    }
+
     /// Create a new bucket.
     /// /!\ this method doesn't create the bucket on S3. See [`Self::create`] for that.
     pub fn new(client: Client, bucket: impl Into<String>) -> Result<Self> {
@@ -298,7 +318,7 @@ mod test {
             .unwrap()
             .key("minioadmin")
             .secret("minioadmin")
-            .build();
+            .client();
 
         println!("Creating a bucket of name: {:?}", name);
 

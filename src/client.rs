@@ -4,7 +4,7 @@ use rusty_s3::{Credentials, S3Action};
 use ureq::Response;
 use url::Url;
 
-use crate::{client_builder::MissingCred, Bucket, ClientBuilder, Result};
+use crate::{builder::MissingCred, Bucket, Builder, Result};
 
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -15,22 +15,22 @@ pub struct Client {
 }
 
 impl Client {
-    /// Create a new `ClientBuilder`.
+    /// Create a new [`Builder`].
     /// It's currently missing its key and secret.
     ///
     /// # Example
     /// ```
-    /// use strois::ClientBuilder;
+    /// use strois::Builder;
     ///
-    /// let client = ClientBuilder::new("http://localhost:9000")?
-    ///     .key("minio")
-    ///     .secret("minio")
-    ///     .build();
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .client();
     /// # Ok::<(), strois::Error>(())
     /// ```
     ///
-    pub fn builder(url: impl AsRef<str>) -> Result<ClientBuilder<MissingCred>> {
-        ClientBuilder::new(url)
+    pub fn builder(url: impl AsRef<str>) -> Result<Builder<MissingCred>> {
+        Builder::new(url)
     }
 
     /// /!\ Do not create the bucket on the S3.
@@ -75,9 +75,9 @@ mod test {
     fn new_client() {
         let client = Client::builder("http://127.0.0.1:9000")
             .unwrap()
-            .key("minio")
-            .secret("minio")
-            .build();
+            .key("minioadmin")
+            .secret("minioadmin")
+            .client();
 
         insta::assert_debug_snapshot!(client, @r###"
         Client {
@@ -99,7 +99,7 @@ mod test {
                 fragment: None,
             },
             cred: Credentials {
-                key: "minio",
+                key: "minioadmin",
             },
             actions_expires_in: 3600s,
             timeout: 60s,
