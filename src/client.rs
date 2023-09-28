@@ -20,13 +20,13 @@ impl Client {
     ///
     /// # Example
     /// ```
-    /// use meilis3arch::ClientBuilder;
+    /// use strois::ClientBuilder;
     ///
     /// let client = ClientBuilder::new("http://localhost:9000")?
     ///     .key("minio")
     ///     .secret("minio")
     ///     .build();
-    /// # Ok::<(), meilis3arch::Error>(())
+    /// # Ok::<(), strois::Error>(())
     /// ```
     ///
     pub fn builder(url: impl AsRef<str>) -> Result<ClientBuilder<MissingCred>> {

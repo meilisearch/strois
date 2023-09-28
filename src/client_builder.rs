@@ -27,42 +27,42 @@ impl ClientBuilder<MissingCred> {
     ///
     /// # Example
     /// ```
-    /// use meilis3arch::ClientBuilder;
+    /// use strois::ClientBuilder;
     ///
     /// let client = ClientBuilder::new("http://localhost:9000")?
     ///     .key("minio")
     ///     .secret("minio")
     ///     .build();
-    /// # Ok::<(), meilis3arch::Error>(())
+    /// # Ok::<(), strois::Error>(())
     /// ```
     ///
     /// If you try to call `.build()` before setting the key and secret it won't work.
     /// ```compile_fail
-    /// use meilis3arch::ClientBuilder;
+    /// use strois::ClientBuilder;
     ///
     /// let client = ClientBuilder::new("http://localhost:9000")?
     ///     .build();
-    /// # Ok::<(), meilis3arch::Error>(())
+    /// # Ok::<(), strois::Error>(())
     /// ```
     ///
     /// But if you only forgot the secret it should panic as well:
     /// ```compile_fail
-    /// use meilis3arch::ClientBuilder;
+    /// use strois::ClientBuilder;
     ///
     /// let client = ClientBuilder::new("http://localhost:9000")?
     ///     .secret("minio")
     ///     .build();
-    /// # Ok::<(), meilis3arch::Error>(())
+    /// # Ok::<(), strois::Error>(())
     /// ```
     ///
     /// Same for the key:
     /// ```compile_fail
-    /// use meilis3arch::ClientBuilder;
+    /// use strois::ClientBuilder;
     ///
     /// let client = ClientBuilder::new("http://localhost:9000")?
     ///     .key("minio")
     ///     .build();
-    /// # Ok::<(), meilis3arch::Error>(())
+    /// # Ok::<(), strois::Error>(())
     /// ```
     ///
     pub fn new(addr: impl AsRef<str>) -> Result<Self> {
@@ -79,13 +79,13 @@ impl ClientBuilder<MissingCred> {
     ///
     /// # Example
     /// ```
-    /// use meilis3arch::ClientBuilder;
+    /// use strois::ClientBuilder;
     ///
     /// let client = ClientBuilder::new("http://localhost:9000")?
     ///     .key("minio")
     ///     .secret("minio")
     ///     .build();
-    /// # Ok::<(), meilis3arch::Error>(())
+    /// # Ok::<(), strois::Error>(())
     /// ```
     pub fn key(self, key: impl Into<String>) -> ClientBuilder<MissingSecret> {
         ClientBuilder {
@@ -101,13 +101,13 @@ impl ClientBuilder<MissingCred> {
     ///
     /// # Example
     /// ```
-    /// use meilis3arch::ClientBuilder;
+    /// use strois::ClientBuilder;
     ///
     /// let client = ClientBuilder::new("http://localhost:9000")?
     ///     .key("minio")
     ///     .secret("minio")
     ///     .build();
-    /// # Ok::<(), meilis3arch::Error>(())
+    /// # Ok::<(), strois::Error>(())
     /// ```
     pub fn secret(self, secret: impl Into<String>) -> ClientBuilder<MissingKey> {
         ClientBuilder {

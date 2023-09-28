@@ -10,7 +10,7 @@ use rusty_s3::{
     S3Action, UrlStyle,
 };
 
-use crate::{error::InternalError, Client, Result};
+use crate::{error::InternalError, Client, Error, Result, S3ErrorCode};
 
 #[derive(Debug, Clone)]
 pub struct Bucket {
@@ -37,6 +37,21 @@ impl Bucket {
         let action = self.bucket.create_bucket(&self.client.cred);
         self.client.put(action)?;
         Ok(self.clone())
+    }
+
+    pub fn get_or_create(&self) -> Result<Self> {
+        match self.create() {
+            Ok(bucket) => Ok(bucket),
+            Err(Error::S3Error(e))
+                if matches!(
+                    e.code,
+                    S3ErrorCode::BucketAlreadyExists | S3ErrorCode::BucketAlreadyOwnedByYou
+                ) =>
+            {
+                Ok(self.clone())
+            }
+            e => e,
+        }
     }
 
     pub fn delete(&self) -> Result<()> {
@@ -341,11 +356,11 @@ mod test {
                         port: Some(
                             9000,
                         ),
-                        path: "/meilis3arch-bucket-test-create-new-bucket/",
+                        path: "/strois-bucket-test-create-new-bucket/",
                         query: None,
                         fragment: None,
                     },
-                    name: "meilis3arch-bucket-test-create-new-bucket",
+                    name: "strois-bucket-test-create-new-bucket",
                     region: "minio",
                 },
             },
@@ -376,6 +391,6 @@ mod test {
         bucket.delete_object("tamo").unwrap();
 
         let ret = bucket.get_object_string("tamo").unwrap_err();
-        insta::assert_display_snapshot!(ret, @r###"NoSuchKey: The specified key does not exist. on Some("meilis3arch-bucket-test-put-get-delete-object")"###);
+        insta::assert_display_snapshot!(ret, @r###"NoSuchKey: The specified key does not exist. on Some("strois-bucket-test-put-get-delete-object")"###);
     }
 }
