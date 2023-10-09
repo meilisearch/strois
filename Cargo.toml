@@ -1,8 +1,9 @@
 [package]
 authors = ["Tamo <tamo@meilisearch.com", "kero <kero@meilisearch.com>"]
-description = "S3 synchronous SDK based on rusty_s3 and ureq."
+description = "S3 synchronous SDK based on rusty_s3 and ureq"
 edition = "2021"
 keywords = ["meilisearch", "s3", "sdk", "sync"]
+categories = ["web-programming::http-client"]
 license = "MIT"
 name = "strois"
 readme = "README.md"
