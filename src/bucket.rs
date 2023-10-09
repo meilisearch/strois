@@ -135,7 +135,7 @@ impl Bucket {
 
     pub fn list_objects(&self, prefix: impl AsRef<str>) -> Result<ListObjectIterator> {
         let mut action = self.bucket.list_objects_v2(Some(&self.client.cred));
-        action.query_mut().insert("prefix", prefix.as_ref());
+        action.with_prefix(prefix.as_ref());
         let response = self.client.get(action)?;
         let response = response.into_string()?;
         let response = match ListObjectsV2::parse_response(&response) {
@@ -246,7 +246,7 @@ impl Iterator for ListObjectIterator {
                     .bucket
                     .bucket
                     .list_objects_v2(Some(&self.bucket.client.cred));
-                action.headers_mut().insert("continuation-token", token);
+                action.with_continuation_token(token);
                 let response = match self.bucket.client.get(action) {
                     Ok(response) => response,
                     Err(e) => return Some(Err(e)),

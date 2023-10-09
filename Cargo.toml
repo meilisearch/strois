@@ -15,7 +15,7 @@ members = ["cli"]
 [dependencies]
 ureq = { version = "2.7.1" }
 thiserror = "1.0.48"
-rusty-s3 = { git = "https://github.com/paolobarbolini/rusty-s3", rev = "0b60b9d"}
+rusty-s3 = "0.5.0"
 url = "2.4.1"
 log = "0.4.20"
 serde = { version = "1.0.188", features = ["derive"] }
