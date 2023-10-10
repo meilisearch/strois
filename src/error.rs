@@ -69,9 +69,9 @@ pub struct S3Error {
     pub code: S3ErrorCode,
     pub message: String,
     pub bucket_name: Option<String>,
-    pub resource: String,
-    pub request_id: String,
-    pub host_id: String,
+    pub resource: Option<String>,
+    pub request_id: Option<String>,
+    pub host_id: Option<String>,
 }
 
 #[derive(Debug, Error, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
