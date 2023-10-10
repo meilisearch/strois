@@ -129,6 +129,15 @@ impl Bucket {
         Ok(size)
     }
 
+    pub fn get_object_to_file(&self, path: impl AsRef<str>, file: impl AsRef<Path>) -> Result<u64> {
+        let reader = self.get_object_reader(path)?;
+        let mut reader = BufReader::new(reader);
+        let file = File::open(file)?;
+        let mut writer = BufWriter::new(file);
+        let size = std::io::copy(&mut reader, &mut writer)?;
+        Ok(size)
+    }
+
     pub fn list_objects(&self, prefix: impl AsRef<str>) -> Result<ListObjectIterator> {
         let mut action = self.bucket.list_objects_v2(Some(&self.client.cred));
         action.with_prefix(prefix.as_ref());
