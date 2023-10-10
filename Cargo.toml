@@ -8,7 +8,7 @@ license = "MIT"
 name = "strois"
 readme = "README.md"
 repository = "https://github.com/meilisearch/strois"
-version = "0.0.2"
+version = "0.0.3"
 
 [workspace]
 members = ["cli"]
