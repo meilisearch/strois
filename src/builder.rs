@@ -212,13 +212,23 @@ impl Builder<Complete> {
 }
 
 impl<T> Builder<T> {
-    pub fn token(mut self, token: String) -> Self {
-        self.token = Some(token);
+    pub fn token(mut self, token: impl Into<String>) -> Self {
+        self.token = Some(token.into());
         self
     }
 
-    pub fn maybe_token(mut self, token: Option<String>) -> Self {
-        self.token = token;
+    pub fn region(mut self, region: impl Into<String>) -> Self {
+        self.region = Some(region.into());
+        self
+    }
+
+    pub fn multipart_size(mut self, multipart_size: usize) -> Self {
+        self.multipart_size = Some(multipart_size);
+        self
+    }
+
+    pub fn maybe_token(mut self, token: Option<impl Into<String>>) -> Self {
+        self.token = token.map(|s| s.into());
         self
     }
 
