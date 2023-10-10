@@ -245,7 +245,7 @@ impl Bucket {
     }
 
     /// Put a file on S3.
-    pub fn put_file(&self, path: impl AsRef<str>, file: impl AsRef<Path>) -> Result<()> {
+    pub fn put_object_file(&self, path: impl AsRef<str>, file: impl AsRef<Path>) -> Result<()> {
         const MINIMAL_PUT_OBJECT_SIZE: u64 = 5 * 1024 * 1024; // 5MiB
         let file = File::open(file)?;
         let size = file.metadata()?.len();
