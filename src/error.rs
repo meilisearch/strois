@@ -61,13 +61,13 @@ pub enum InternalError {
 
 #[derive(Debug, Error, Deserialize)]
 #[serde(rename_all = "PascalCase")]
-#[error("{code}: {message} on {bucket_name:?}")]
+#[error("{code}: {} on {bucket_name:?}", message.as_deref().unwrap_or_default())]
 pub struct S3Error {
     #[serde(skip)]
     pub status_code: StatusCode,
     #[serde(with = "quick_xml::serde_helpers::text_content")]
     pub code: S3ErrorCode,
-    pub message: String,
+    pub message: Option<String>,
     pub bucket_name: Option<String>,
     pub resource: Option<String>,
     pub request_id: Option<String>,
@@ -150,6 +150,11 @@ pub enum S3ErrorCode {
     UnexpectedContent,
     UnresolvableGrantByEmailAddress,
     UserKeyMustBeSpecified,
+
+    /// That's unexpected. Please open a GitHub issue specifying which
+    /// version of S3 you're using.
+    #[serde(other)]
+    Unknown,
 }
 
 impl fmt::Display for S3ErrorCode {
