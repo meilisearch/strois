@@ -178,7 +178,7 @@ fn main() -> Result<()> {
                 Some(content) => { s3.put_object(&path, content.as_bytes()).into_diagnostic()?;}
                 None if atty::isnt(atty::Stream::Stdin) => {
                     let mut reader = stdin();
-                    s3.put_object_multipart(path, &mut reader, 50 * 1024 * 1024).into_diagnostic()?;
+                    s3.put_object_multipart(path, &mut reader).into_diagnostic()?;
                 }
                 None if force => { s3.put_object(&path, []).into_diagnostic()?; }
                 None => return Err(miette!("Did you forgot to pipe something in the command? If you wanted to reset the content of the file use `--force` or `-f`.")),

@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{io::Read, time::Duration};
 
 use rusty_s3::{Credentials, S3Action};
 use ureq::Response;
@@ -9,9 +9,11 @@ use crate::{builder::MissingCred, Bucket, Builder, Result};
 #[derive(Debug, Clone)]
 pub struct Client {
     pub(crate) addr: Url,
+    pub(crate) region: String,
     pub(crate) cred: Credentials,
     pub(crate) actions_expires_in: Duration,
     pub(crate) timeout: Duration,
+    pub(crate) multipart_size: usize,
 }
 
 impl Client {
@@ -47,11 +49,13 @@ impl Client {
     pub(crate) fn put_with_body<'a>(
         &self,
         action: impl S3Action<'a>,
-        body: &[u8],
+        body: impl Read,
+        length: usize,
     ) -> Result<Response> {
         Ok(ureq::put(action.sign(self.actions_expires_in).as_str())
             .timeout(self.timeout)
-            .send_bytes(body)?)
+            .set(http::header::CONTENT_LENGTH.as_str(), &length.to_string())
+            .send(body)?)
     }
 
     pub(crate) fn get<'a>(&self, action: impl S3Action<'a>) -> Result<Response> {
@@ -98,11 +102,13 @@ mod test {
                 query: None,
                 fragment: None,
             },
+            region: "",
             cred: Credentials {
                 key: "minioadmin",
             },
             actions_expires_in: 3600s,
             timeout: 60s,
+            multipart_size: 52428800,
         }
         "###);
     }

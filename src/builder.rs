@@ -15,10 +15,12 @@ pub struct Complete {
 
 pub struct Builder<State> {
     addr: Url,
+    region: Option<String>,
     cred: State,
     token: Option<String>,
     actions_expires_in: Option<Duration>,
     timeout: Option<Duration>,
+    multipart_size: Option<usize>,
 }
 
 impl Builder<MissingCred> {
@@ -68,10 +70,12 @@ impl Builder<MissingCred> {
     pub fn new(addr: impl AsRef<str>) -> Result<Self> {
         Ok(Self {
             addr: addr.as_ref().parse()?,
+            region: None,
             cred: MissingCred,
             token: None,
             actions_expires_in: None,
             timeout: None,
+            multipart_size: None,
         })
     }
 
@@ -90,10 +94,12 @@ impl Builder<MissingCred> {
     pub fn key(self, key: impl Into<String>) -> Builder<MissingSecret> {
         Builder {
             addr: self.addr,
+            region: self.region,
             cred: MissingSecret(key.into()),
             token: self.token,
             actions_expires_in: self.actions_expires_in,
             timeout: self.timeout,
+            multipart_size: None,
         }
     }
 
@@ -112,10 +118,12 @@ impl Builder<MissingCred> {
     pub fn secret(self, secret: impl Into<String>) -> Builder<MissingKey> {
         Builder {
             addr: self.addr,
+            region: self.region,
             cred: MissingKey(secret.into()),
             token: self.token,
             actions_expires_in: self.actions_expires_in,
             timeout: self.timeout,
+            multipart_size: None,
         }
     }
 }
@@ -124,6 +132,7 @@ impl Builder<MissingSecret> {
     pub fn secret(self, secret: impl Into<String>) -> Builder<Complete> {
         Builder {
             addr: self.addr,
+            region: self.region,
             cred: Complete {
                 key: self.cred.0,
                 secret: secret.into(),
@@ -131,6 +140,7 @@ impl Builder<MissingSecret> {
             token: self.token,
             actions_expires_in: self.actions_expires_in,
             timeout: self.timeout,
+            multipart_size: None,
         }
     }
 }
@@ -139,6 +149,7 @@ impl Builder<MissingKey> {
     pub fn key(self, key: impl Into<String>) -> Builder<Complete> {
         Builder {
             addr: self.addr,
+            region: self.region,
             cred: Complete {
                 key: key.into(),
                 secret: self.cred.0,
@@ -146,6 +157,7 @@ impl Builder<MissingKey> {
             token: self.token,
             actions_expires_in: self.actions_expires_in,
             timeout: self.timeout,
+            multipart_size: None,
         }
     }
 }
@@ -172,11 +184,13 @@ impl Builder<Complete> {
 
         Client {
             addr: self.addr,
+            region: self.region.unwrap_or_default(),
             cred,
             actions_expires_in: self
                 .actions_expires_in
                 .unwrap_or(Duration::from_secs(60 * 60)),
             timeout: self.timeout.unwrap_or(Duration::from_secs(60)),
+            multipart_size: self.multipart_size.unwrap_or(50 * 1024 * 1024), // 50MiB
         }
     }
 

@@ -1,4 +1,8 @@
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::{
+    fs::File,
+    io::{BufReader, BufWriter, Read, Write},
+    path::Path,
+};
 
 use http::header::ETAG;
 
@@ -48,7 +52,7 @@ impl Bucket {
                 client.addr.clone(),
                 UrlStyle::Path,
                 bucket.into(),
-                "minio",
+                client.region.clone(),
             )?,
             client,
         })
@@ -78,14 +82,6 @@ impl Bucket {
     pub fn delete(&self) -> Result<()> {
         let action = self.bucket.delete_bucket(&self.client.cred);
         self.client.delete(action)?;
-        Ok(())
-    }
-
-    pub fn put_object(&self, path: impl AsRef<str>, content: impl AsRef<[u8]>) -> Result<()> {
-        let action = self
-            .bucket
-            .put_object(Some(&self.client.cred), path.as_ref());
-        self.client.put_with_body(action, content.as_ref())?;
         Ok(())
     }
 
@@ -158,11 +154,32 @@ impl Bucket {
         Ok(())
     }
 
+    pub fn put_object(&self, path: impl AsRef<str>, content: impl AsRef<[u8]>) -> Result<()> {
+        let action = self
+            .bucket
+            .put_object(Some(&self.client.cred), path.as_ref());
+        let content = content.as_ref();
+        self.client.put_with_body(action, content, content.len())?;
+        Ok(())
+    }
+
+    pub fn put_object_reader(
+        &self,
+        path: impl AsRef<str>,
+        content: impl Read,
+        length: usize,
+    ) -> Result<()> {
+        let action = self
+            .bucket
+            .put_object(Some(&self.client.cred), path.as_ref());
+        self.client.put_with_body(action, content, length)?;
+        Ok(())
+    }
+
     pub fn put_object_multipart(
         &self,
         path: impl AsRef<str>,
         mut content: impl Read,
-        part_size: usize,
     ) -> Result<()> {
         let path = path.as_ref();
         let duration = self.client.actions_expires_in;
@@ -178,7 +195,7 @@ impl Bucket {
             CreateMultipartUpload::parse_response(&body).map_err(InternalError::BadS3Payload)?;
 
         let mut etags = Vec::new();
-        let mut buffer = vec![0u8; part_size];
+        let mut buffer = vec![0u8; self.client.multipart_size];
 
         for part in 1.. {
             let mut buf = &mut buffer[..];
@@ -224,6 +241,23 @@ impl Bucket {
         );
         let url = action.sign(duration);
         ureq::post(url.as_str()).send_string(&action.body())?;
+        Ok(())
+    }
+
+    /// Put a file on S3.
+    pub fn put_file(&self, path: impl AsRef<str>, file: impl AsRef<Path>) -> Result<()> {
+        const MINIMAL_PUT_OBJECT_SIZE: u64 = 5 * 1024 * 1024; // 5MiB
+        let file = File::open(file)?;
+        let size = file.metadata()?.len();
+
+        if size > MINIMAL_PUT_OBJECT_SIZE {
+            let reader = BufReader::new(file);
+            self.put_object_multipart(path, reader)?;
+        } else {
+            let reader = BufReader::new(file);
+            self.put_object_reader(path, reader, size as usize)?;
+        }
+
         Ok(())
     }
 }
@@ -354,11 +388,13 @@ mod test {
                         query: None,
                         fragment: None,
                     },
+                    region: "",
                     cred: Credentials {
                         key: "minioadmin",
                     },
                     actions_expires_in: 3600s,
                     timeout: 60s,
+                    multipart_size: 52428800,
                 },
                 bucket: Bucket {
                     base_url: Url {
@@ -379,7 +415,7 @@ mod test {
                         fragment: None,
                     },
                     name: "strois-bucket-test-create-new-bucket",
-                    region: "minio",
+                    region: "",
                 },
             },
         )
