@@ -23,4 +23,4 @@ colored = "2.0.4"
 env_logger = "0.10.0"
 log = "0.4.20"
 miette = { version = "5.10.0", features = ["fancy", "owo-colors"] }
-strois = { path = "../", version = "0.0.3" }
+strois = { path = "../", version = "0.0.4" }
