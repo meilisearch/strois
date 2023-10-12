@@ -39,7 +39,6 @@ impl Bucket {
     ///     .bucket("tamo");
     /// # Ok::<(), strois::Error>(())
     /// ```
-    ///
     pub fn builder(url: impl AsRef<str>) -> Result<Builder<MissingCred>> {
         Builder::new(url)
     }
@@ -58,12 +57,46 @@ impl Bucket {
         })
     }
 
+    /// Create a new bucket on S3.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::{Builder, Error, S3ErrorCode};
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .bucket("tamo")?;
+    ///
+    /// match bucket.create() {
+    ///   Ok(_) => (), // the bucket was created on S3
+    ///   Err(Error::S3Error(error)) if matches!(error.code, S3ErrorCode::BucketAlreadyExists | S3ErrorCode::BucketAlreadyOwnedByYou) => (), // the bucket already exists.
+    ///   Err(e) => return Err(e),
+    /// }
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn create(&self) -> Result<Self> {
         let action = self.bucket.create_bucket(&self.client.cred);
         self.client.put(action)?;
         Ok(self.clone())
     }
 
+    /// Get or create a new bucket on S3.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::{Builder};
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .bucket("tamo")?
+    ///     .get_or_create()?;
+    ///
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn get_or_create(&self) -> Result<Self> {
         match self.create() {
             Ok(bucket) => Ok(bucket),
@@ -79,12 +112,58 @@ impl Bucket {
         }
     }
 
+    /// Get or create a new bucket on S3.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::{Builder, Error, S3ErrorCode};
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .bucket("to-delete")?;
+    ///
+    /// match bucket.delete() {
+    ///   Ok(_) => (), // the bucket was successfully deleted
+    ///   Err(Error::S3Error(error)) if matches!(error.code, S3ErrorCode::NoSuchBucket) => (), // the bucket doesn't exists.
+    ///   Err(e) => return Err(e),
+    /// }
+    ///
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn delete(&self) -> Result<()> {
         let action = self.bucket.delete_bucket(&self.client.cred);
         self.client.delete(action)?;
         Ok(())
     }
 
+    /// Get a json object and deserialize it on the fly.
+    /// Returns an error if it can't be deserialized.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .bucket("tamo")?
+    ///     .get_or_create()?;
+    ///
+    /// bucket.put_object("tamo", "{ \"doggo\": \"golden retriever\" }")?;
+    ///
+    /// #[derive(serde::Deserialize)]
+    /// struct Doggo {
+    ///   doggo: String,
+    /// }
+    ///
+    /// let tamo: Doggo = bucket.get_object_json("tamo")?;
+    /// assert_eq!(tamo.doggo, "golden retriever");
+    ///
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     #[cfg(feature = "json")]
     pub fn get_object_json<T>(&self, path: impl AsRef<str>) -> Result<T>
     where
@@ -97,11 +176,52 @@ impl Bucket {
         Ok(response.into_json()?)
     }
 
+    /// Get an object as a string.
+    /// Returns an error if it's not an utf-8 valid string.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .bucket("tamo")?
+    ///     .get_or_create()?;
+    ///
+    /// bucket.put_object("tamo", "kero")?;
+    ///
+    /// let tamo = bucket.get_object_string("tamo")?;
+    /// assert_eq!(tamo, "kero");
+    ///
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn get_object_string(&self, path: impl AsRef<str>) -> Result<String> {
         let bytes = self.get_object_bytes(path)?;
         Ok(String::from_utf8(bytes).map_err(UserError::PayloadCouldNotBeConvertedToString)?)
     }
 
+    /// Get an object as raw bytes.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .bucket("tamo")?
+    ///     .get_or_create()?;
+    ///
+    /// bucket.put_object("tamo", "kero")?;
+    ///
+    /// let tamo = bucket.get_object_bytes("tamo")?;
+    /// assert_eq!(tamo, b"kero");
+    ///
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn get_object_bytes(&self, path: impl AsRef<str>) -> Result<Vec<u8>> {
         let reader = self.get_object_reader(path.as_ref())?;
         let mut reader = BufReader::new(reader);
@@ -110,6 +230,28 @@ impl Bucket {
         Ok(buffer)
     }
 
+    /// Get a reader over an object.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .bucket("tamo")?
+    ///     .get_or_create()?;
+    ///
+    /// bucket.put_object("tamo", "kero")?;
+    ///
+    /// let mut tamo = bucket.get_object_reader("tamo")?;
+    /// let mut ret = String::new();
+    /// tamo.read_to_string(&mut ret)?;
+    /// assert_eq!(ret, "kero");
+    ///
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn get_object_reader(
         &self,
         path: impl AsRef<str>,
@@ -121,6 +263,27 @@ impl Bucket {
         Ok(response.into_reader())
     }
 
+    /// Download and write an object to a writer.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let bucket = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .bucket("tamo")?
+    ///     .get_or_create()?;
+    ///
+    /// bucket.put_object("tamo", "kero")?;
+    ///
+    /// let mut tamo: Vec<u8> = Vec::new();
+    /// bucket.get_object_to_writer("tamo", &mut tamo)?;
+    /// assert_eq!(tamo, b"kero");
+    ///
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn get_object_to_writer(&self, path: impl AsRef<str>, writer: impl Write) -> Result<u64> {
         let reader = self.get_object_reader(path)?;
         let mut reader = BufReader::new(reader);
