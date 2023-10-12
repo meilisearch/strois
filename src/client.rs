@@ -41,6 +41,24 @@ impl Client {
         Bucket::new(self.clone(), name, self.url_style)
     }
 
+    pub(crate) fn post<'a>(&self, action: impl S3Action<'a>) -> Result<Response> {
+        Ok(ureq::post(action.sign(self.actions_expires_in).as_str())
+            .timeout(self.timeout)
+            .call()?)
+    }
+
+    pub(crate) fn post_with_body<'a>(
+        &self,
+        action: impl S3Action<'a>,
+        body: impl Read,
+        length: usize,
+    ) -> Result<Response> {
+        Ok(ureq::post(action.sign(self.actions_expires_in).as_str())
+            .timeout(self.timeout)
+            .set(http::header::CONTENT_LENGTH.as_str(), &length.to_string())
+            .send(body)?)
+    }
+
     pub(crate) fn put<'a>(&self, action: impl S3Action<'a>) -> Result<Response> {
         Ok(ureq::put(action.sign(self.actions_expires_in).as_str())
             .timeout(self.timeout)

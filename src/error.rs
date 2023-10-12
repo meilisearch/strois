@@ -49,6 +49,8 @@ impl From<ureq::Error> for Error {
 pub enum UserError {
     #[error("Payload could not be converted to utf-8 string: `{0}`.")]
     PayloadCouldNotBeConvertedToString(FromUtf8Error),
+    #[error("Tried to send more than 10_000 parts in a multipart upload. Reduce the size of your object or send bigger parts.")]
+    TriedToSendMoreThan10000PartsInMultiPart,
 }
 
 #[derive(Debug, Error)]
@@ -57,6 +59,8 @@ pub enum InternalError {
     S3ReturnedNonUtf8Payload(std::io::Error),
     #[error("Could not deserialize S3 payload: `{0}`.`")]
     BadS3Payload(quick_xml::de::DeError),
+    #[error("Multipart missing Etag header: `{0}`")]
+    MultipartMissingEtagHeader(String),
 }
 
 #[derive(Debug, Error, Deserialize)]

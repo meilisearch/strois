@@ -9,9 +9,9 @@ use http::header::ETAG;
 use rusty_s3::{
     actions::{
         list_objects_v2::ListObjectsContent, CompleteMultipartUpload, CreateMultipartUpload,
-        ListObjectsV2, ListObjectsV2Response, UploadPart,
+        CreateMultipartUploadResponse, ListObjectsV2, ListObjectsV2Response, UploadPart,
     },
-    S3Action, UrlStyle,
+    UrlStyle,
 };
 
 use crate::{
@@ -348,17 +348,9 @@ impl Bucket {
         Ok(())
     }
 
-    pub fn put_object_multipart(
-        &self,
-        path: impl AsRef<str>,
-        mut content: impl Read,
-    ) -> Result<()> {
-        let path = path.as_ref();
-        let duration = self.client.actions_expires_in;
+    pub fn starts_multipart<'a>(&'a self, path: &'a str) -> Result<Multipart> {
         let action = CreateMultipartUpload::new(&self.bucket, Some(&self.client.cred), path);
-        let url = action.sign(duration);
-        let resp = ureq::post(url.as_str()).call()?;
-
+        let resp = self.client.post(action)?;
         let body = resp
             .into_string()
             .map_err(InternalError::S3ReturnedNonUtf8Payload)?;
@@ -366,10 +358,26 @@ impl Bucket {
         let multipart =
             CreateMultipartUpload::parse_response(&body).map_err(InternalError::BadS3Payload)?;
 
-        let mut etags = Vec::new();
+        Ok(Multipart {
+            bucket: self,
+            multipart,
+            path,
+            part: 1,
+            etags: Vec::new(),
+        })
+    }
+
+    pub fn put_object_multipart(
+        &self,
+        path: impl AsRef<str>,
+        mut content: impl Read,
+    ) -> Result<()> {
+        let path = path.as_ref();
+        let mut multipart = self.starts_multipart(path)?;
+
         let mut buffer = vec![0u8; self.client.multipart_size];
 
-        for part in 1.. {
+        loop {
             let mut buf = &mut buffer[..];
             let mut size = 0;
 
@@ -387,33 +395,10 @@ impl Bucket {
                 break;
             }
 
-            let part_upload = UploadPart::new(
-                &self.bucket,
-                Some(&self.client.cred),
-                path,
-                part,
-                multipart.upload_id(),
-            );
-
-            let url = part_upload.sign(duration);
-
-            let resp = ureq::put(url.as_str()).send_bytes(buffer)?;
-            let etag = resp
-                .header(ETAG.as_str())
-                .expect("every UploadPart request returns an Etag");
-            etags.push(etag.trim_matches('"').to_string());
+            multipart.upload_part(buffer)?;
         }
 
-        let action = CompleteMultipartUpload::new(
-            &self.bucket,
-            Some(&self.client.cred),
-            path,
-            multipart.upload_id(),
-            etags.iter().map(|s| s.as_ref()),
-        );
-        let url = action.sign(duration);
-        ureq::post(url.as_str()).send_string(&action.body())?;
-        Ok(())
+        multipart.complete()
     }
 
     /// Put a file on S3.
@@ -429,6 +414,61 @@ impl Bucket {
             let reader = BufReader::new(file);
             self.put_object_reader(path, reader, size as usize)?;
         }
+
+        Ok(())
+    }
+}
+
+pub struct Multipart<'a> {
+    bucket: &'a Bucket,
+    multipart: CreateMultipartUploadResponse,
+    path: &'a str,
+    etags: Vec<String>,
+    part: u16,
+}
+
+impl Multipart<'_> {
+    pub fn upload_part(&mut self, buffer: impl AsRef<[u8]>) -> Result<()> {
+        if self.part > 10_000 {
+            return Err(UserError::TriedToSendMoreThan10000PartsInMultiPart.into());
+        }
+        let part_upload = UploadPart::new(
+            &self.bucket.bucket,
+            Some(&self.bucket.client.cred),
+            self.path,
+            self.part,
+            self.multipart.upload_id(),
+        );
+
+        let buffer = buffer.as_ref();
+        let response = self
+            .bucket
+            .client
+            .put_with_body(part_upload, buffer, buffer.len())
+            .unwrap();
+
+        let etag = response.header(ETAG.as_str()).ok_or_else(|| {
+            InternalError::MultipartMissingEtagHeader(response.headers_names().join(", "))
+        })?;
+        self.etags.push(etag.trim_matches('"').to_string());
+        self.part += 1;
+
+        Ok(())
+    }
+
+    pub fn complete(self) -> Result<()> {
+        let action = CompleteMultipartUpload::new(
+            &self.bucket.bucket,
+            Some(&self.bucket.client.cred),
+            self.path,
+            self.multipart.upload_id(),
+            self.etags.iter().map(|s| s.as_str()),
+        );
+
+        let body = action.clone().body();
+        self.bucket
+            .client
+            .post_with_body(action, &mut body.as_bytes(), body.len())?;
 
         Ok(())
     }
@@ -493,6 +533,12 @@ mod test {
 
         fn deref(&self) -> &Self::Target {
             &self.0
+        }
+    }
+
+    impl std::ops::DerefMut for TestBucket {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
         }
     }
 
@@ -621,5 +667,31 @@ mod test {
 
         let ret = bucket.get_object_string("tamo").unwrap_err();
         insta::assert_display_snapshot!(ret, @r###"NoSuchKey: The specified key does not exist. on Some("strois-bucket-test-put-get-delete-object")"###);
+    }
+
+    #[test]
+    fn put_multipart() {
+        let mut bucket = new_bucket!();
+        let mut payload = "tamo ".repeat(1024 * 1024); // 5MiB payload
+        payload.push_str("tamo."); // 5Mib + 5 bytes
+
+        // With the default part size that's only one part.
+        bucket
+            .put_object_multipart("tamo", &mut payload.as_bytes())
+            .unwrap();
+
+        let content = bucket.get_object_string("tamo").unwrap();
+        assert_eq!(content, payload);
+        bucket.delete_object("tamo").unwrap();
+
+        bucket.client.multipart_size = 5 * 1024 * 1024; // 5MiB the minimum possible size for multipart.
+
+        // This will create two parts
+        bucket
+            .put_object_multipart("tamo", &mut payload.as_bytes())
+            .unwrap();
+        let content = bucket.get_object_string("tamo").unwrap();
+        assert_eq!(content, payload);
+        bucket.delete_object("tamo").unwrap();
     }
 }
