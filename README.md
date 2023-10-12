@@ -13,7 +13,7 @@ use strois::{Builder, Error, S3ErrorCode};
 let bucket = Builder::new("http://localhost:9000")?
     .key("minioadmin")
     .secret("minioadmin")
-    .with_url_path_style()
+    .with_url_path_style(true)
     .bucket("tamo")?;
 
 match bucket.create() {

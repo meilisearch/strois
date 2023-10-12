@@ -113,8 +113,8 @@ impl Builder<MissingCred> {
     /// use strois::Builder;
     ///
     /// let client = Builder::new("http://localhost:9000")?
-    ///     .key("minioadmin")
     ///     .secret("minioadmin")
+    ///     .key("minioadmin")
     ///     .client();
     /// # Ok::<(), strois::Error>(())
     /// ```
@@ -133,6 +133,18 @@ impl Builder<MissingCred> {
 }
 
 impl Builder<MissingSecret> {
+    /// Set the secret in the `Builder`.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn secret(self, secret: impl Into<String>) -> Builder<Complete> {
         Builder {
             addr: self.addr,
@@ -151,6 +163,18 @@ impl Builder<MissingSecret> {
 }
 
 impl Builder<MissingKey> {
+    /// Set the key in the `Builder`.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .secret("minioadmin")
+    ///     .key("minioadmin")
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn key(self, key: impl Into<String>) -> Builder<Complete> {
         Builder {
             addr: self.addr,
@@ -219,37 +243,139 @@ impl Builder<Complete> {
 }
 
 impl<T> Builder<T> {
-    pub fn with_url_path_style(mut self) -> Self {
-        self.url_style = Some(UrlStyle::Path);
+    /// Enable the url path style.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .with_url_path_style(true)
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
+    pub fn with_url_path_style(mut self, path_style: bool) -> Self {
+        if path_style {
+            self.url_style = Some(UrlStyle::Path);
+        }
         self
     }
 
+    /// Set the token.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .token("tamo")
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn token(mut self, token: impl Into<String>) -> Self {
         self.token = Some(token.into());
         self
     }
 
+    /// Set the region.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .region("EU-west")
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn region(mut self, region: impl Into<String>) -> Self {
         self.region = Some(region.into());
         self
     }
 
+    /// Set the size for the parts of the multipart upload in bytes.
+    /// By default it's set to 50MiB.
+    /// For aws, the value must be contained between 5MiB and 5GiB.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .multipart_size(5 * 1024 * 1024) // 5MiB
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn multipart_size(mut self, multipart_size: usize) -> Self {
         self.multipart_size = Some(multipart_size);
         self
     }
 
+    /// Set the token if you have one.
+    /// If `None` the token is set to `None` again.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let token = Some("tamo");
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .maybe_token(token)
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn maybe_token(mut self, token: Option<impl Into<String>>) -> Self {
         self.token = token.map(|s| s.into());
         self
     }
 
+    /// Set the time before an action expires.
+    /// One hour by default.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    /// use std::time::Duration;
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .actions_expires_in(Duration::from_secs(60))
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
     pub fn actions_expires_in(mut self, actions_expires_in: Duration) -> Self {
         self.actions_expires_in = Some(actions_expires_in);
         self
     }
 
-    pub fn timeout(mut self, timeout: Duration) -> Self {
+    /// Set the timeout of the http requests.
+    /// One minute by default.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    /// use std::time::Duration;
+    ///
+    /// let client = Builder::new("http://localhost:9000")?
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .http_timeout(Duration::from_secs(60 * 60))
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
+    pub fn http_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }

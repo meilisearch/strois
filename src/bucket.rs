@@ -360,7 +360,7 @@ mod test {
             .unwrap()
             .key("minioadmin")
             .secret("minioadmin")
-            .with_url_path_style()
+            .with_url_path_style(true)
             .client();
 
         println!("Creating a bucket of name: {:?}", name);
