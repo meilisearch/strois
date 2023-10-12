@@ -14,13 +14,9 @@ let bucket = Builder::new("http://localhost:9000")?
     .key("minioadmin")
     .secret("minioadmin")
     .with_url_path_style(true)
-    .bucket("tamo")?;
+    .bucket("tamo")?
+    .get_or_create()?;
 
-match bucket.create() {
-    Ok(_) => (),
-    Err(Error::S3Error(error)) if error.code == S3ErrorCode::BucketAlreadyExists || error.code == S3ErrorCode::BucketAlreadyOwnedByYou => (),
-    e => return e.map(|_| ()),
-}
 bucket.put_object("tamo", b"kero")?;
 
 let content = bucket.get_object_string("tamo")?;
