@@ -308,6 +308,7 @@ impl Iterator for ListObjectIterator {
                     common_prefixes: _,
                     next_continuation_token,
                     start_after: _,
+                    ..
                 } = response;
                 self.continuation_token = next_continuation_token;
                 self.current_bucket = contents.into_iter();
