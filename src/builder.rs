@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rusty_s3::Credentials;
+use rusty_s3::{Credentials, UrlStyle};
 use url::Url;
 
 use crate::{Bucket, Client, Result};
@@ -17,6 +17,7 @@ pub struct Builder<State> {
     addr: Url,
     region: Option<String>,
     cred: State,
+    url_style: Option<UrlStyle>,
     token: Option<String>,
     actions_expires_in: Option<Duration>,
     timeout: Option<Duration>,
@@ -72,6 +73,7 @@ impl Builder<MissingCred> {
             addr: addr.as_ref().parse()?,
             region: None,
             cred: MissingCred,
+            url_style: None,
             token: None,
             actions_expires_in: None,
             timeout: None,
@@ -96,6 +98,7 @@ impl Builder<MissingCred> {
             addr: self.addr,
             region: self.region,
             cred: MissingSecret(key.into()),
+            url_style: None,
             token: self.token,
             actions_expires_in: self.actions_expires_in,
             timeout: self.timeout,
@@ -120,6 +123,7 @@ impl Builder<MissingCred> {
             addr: self.addr,
             region: self.region,
             cred: MissingKey(secret.into()),
+            url_style: None,
             token: self.token,
             actions_expires_in: self.actions_expires_in,
             timeout: self.timeout,
@@ -137,6 +141,7 @@ impl Builder<MissingSecret> {
                 key: self.cred.0,
                 secret: secret.into(),
             },
+            url_style: None,
             token: self.token,
             actions_expires_in: self.actions_expires_in,
             timeout: self.timeout,
@@ -154,6 +159,7 @@ impl Builder<MissingKey> {
                 key: key.into(),
                 secret: self.cred.0,
             },
+            url_style: None,
             token: self.token,
             actions_expires_in: self.actions_expires_in,
             timeout: self.timeout,
@@ -186,6 +192,7 @@ impl Builder<Complete> {
             addr: self.addr,
             region: self.region.unwrap_or_default(),
             cred,
+            url_style: self.url_style.unwrap_or(UrlStyle::VirtualHost),
             actions_expires_in: self
                 .actions_expires_in
                 .unwrap_or(Duration::from_secs(60 * 60)),
@@ -212,6 +219,11 @@ impl Builder<Complete> {
 }
 
 impl<T> Builder<T> {
+    pub fn with_url_path_style(mut self) -> Self {
+        self.url_style = Some(UrlStyle::Path);
+        self
+    }
+
     pub fn token(mut self, token: impl Into<String>) -> Self {
         self.token = Some(token.into());
         self

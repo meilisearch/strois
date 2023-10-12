@@ -46,11 +46,11 @@ impl Bucket {
 
     /// Create a new bucket.
     /// /!\ this method doesn't create the bucket on S3. See [`Self::create`] for that.
-    pub fn new(client: Client, bucket: impl Into<String>) -> Result<Self> {
+    pub fn new(client: Client, bucket: impl Into<String>, url_style: UrlStyle) -> Result<Self> {
         Ok(Self {
             bucket: rusty_s3::Bucket::new(
                 client.addr.clone(),
-                UrlStyle::Path,
+                url_style,
                 bucket.into(),
                 client.region.clone(),
             )?,
@@ -360,6 +360,7 @@ mod test {
             .unwrap()
             .key("minioadmin")
             .secret("minioadmin")
+            .with_url_path_style()
             .client();
 
         println!("Creating a bucket of name: {:?}", name);
@@ -402,6 +403,7 @@ mod test {
                     cred: Credentials {
                         key: "minioadmin",
                     },
+                    url_style: Path,
                     actions_expires_in: 3600s,
                     timeout: 60s,
                     multipart_size: 52428800,

@@ -1,6 +1,6 @@
 use std::{io::Read, time::Duration};
 
-use rusty_s3::{Credentials, S3Action};
+use rusty_s3::{Credentials, S3Action, UrlStyle};
 use ureq::Response;
 use url::Url;
 
@@ -11,6 +11,7 @@ pub struct Client {
     pub(crate) addr: Url,
     pub(crate) region: String,
     pub(crate) cred: Credentials,
+    pub(crate) url_style: UrlStyle,
     pub(crate) actions_expires_in: Duration,
     pub(crate) timeout: Duration,
     pub(crate) multipart_size: usize,
@@ -37,7 +38,7 @@ impl Client {
 
     /// /!\ Do not create the bucket on the S3.
     pub fn bucket(&self, name: impl Into<String>) -> Result<Bucket> {
-        Bucket::new(self.clone(), name)
+        Bucket::new(self.clone(), name, self.url_style)
     }
 
     pub(crate) fn put<'a>(&self, action: impl S3Action<'a>) -> Result<Response> {
@@ -106,6 +107,7 @@ mod test {
             cred: Credentials {
                 key: "minioadmin",
             },
+            url_style: VirtualHost,
             actions_expires_in: 3600s,
             timeout: 60s,
             multipart_size: 52428800,
