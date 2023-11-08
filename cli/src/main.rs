@@ -41,6 +41,13 @@ struct Options {
     #[clap(flatten)]
     pub cred: Credential,
 
+    /// The style of the url.
+    /// Do you want your url to be: `http://bucket.url.com/`
+    /// or `http://url.com/bucket/`.
+    /// Notice that localhost doesn't work with the virtual host style.
+    #[clap(global = true, long, default_value_t = false)]
+    pub virtual_host_style: bool,
+
     /// The verbosity, the more `v` you use and the more verbose it gets.
     #[clap(global = true, short, action = clap::ArgAction::Count)]
     verbose: u8,
@@ -134,6 +141,7 @@ fn main() -> Result<()> {
         .key(opt.cred.key)
         .secret(opt.cred.secret)
         .maybe_token(opt.cred.token)
+        .with_url_path_style(!opt.virtual_host_style)
         .bucket(opt.bucket)
         .into_diagnostic()?;
 
@@ -193,7 +201,7 @@ fn main() -> Result<()> {
                 }
             },
             BucketCommand::Delete { ignore_if_does_not_exists } => {
-               match s3.create() {
+               match s3.delete() {
                     Ok(_) => (),
                     Err(Error::S3Error(e)) if ignore_if_does_not_exists && matches!(e.code, S3ErrorCode::NoSuchBucket) => log::info!("Bucket does not exists"),
                     e => return e.into_diagnostic().map(drop),
