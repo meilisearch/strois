@@ -35,6 +35,9 @@ impl Client {
     pub fn builder(url: impl AsRef<str>) -> Result<Builder<MissingCred>> {
         Builder::new(url)
     }
+    pub fn build_region(url: impl AsRef<str>) -> Result<Builder<MissingCred>> {
+        Builder::new(url)
+    }
 
     /// /!\ Do not create the bucket on the S3.
     pub fn bucket(&self, name: impl Into<String>) -> Result<Bucket> {

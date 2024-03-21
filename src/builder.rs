@@ -81,6 +81,63 @@ impl Builder<MissingCred> {
         })
     }
 
+    /// Create a new `Builder` based on an AWS region
+    /// It's currently missing its key and secret.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new_region(awsregion::Region::UsEast1)
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
+    ///
+    /// If you try to call `.client()` before setting the key and secret it won't work.
+    /// ```compile_fail
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new_region(awsregion::Region::UsEast1)
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
+    ///
+    /// But if you only forgot the secret it should panic as well:
+    /// ```compile_fail
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new_region(awsregion::Region::UsEast1)
+    ///     .secret("minioadmin")
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
+    ///
+    /// Same for the key:
+    /// ```compile_fail
+    /// use strois::Builder;
+    ///
+    /// let client = Builder::new_region(awsregion::Region::UsEast1)
+    ///     .key("minioadmin")
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
+    ///
+    #[cfg(feature="aws-region")]
+    pub fn new_region(region: impl AsRef<awsregion::Region>) -> Self {
+        Self {
+            addr: format!("{}://{}", region.as_ref().scheme(), region.as_ref().endpoint()).parse().unwrap(),
+            region: Some(region.as_ref().to_string()),
+            cred: MissingCred,
+            url_style: None,
+            token: None,
+            actions_expires_in: None,
+            timeout: None,
+            multipart_size: None,
+        }
+    }
+
     /// Set the key in the `Builder`.
     ///
     /// # Example
