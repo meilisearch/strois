@@ -36,7 +36,7 @@ impl Client {
         Builder::new(url)
     }
 
-    /// /!\ Do not create the bucket on the S3.
+    /// /!\ Does not not create the bucket on S3, only instanciates a `Bucket` object
     pub fn bucket(&self, name: impl Into<String>) -> Result<Bucket> {
         Bucket::new(self.clone(), name, self.url_style)
     }
