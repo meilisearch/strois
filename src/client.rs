@@ -36,6 +36,25 @@ impl Client {
         Builder::new(url)
     }
 
+    /// Create a new [`Builder`].
+    /// It's currently missing its key and secret.
+    ///
+    /// # Example
+    /// ```
+    /// use strois::Client;
+    ///
+    /// let client = Builder::builder_region(awsregion::Region::UsEast1)
+    ///     .key("minioadmin")
+    ///     .secret("minioadmin")
+    ///     .client();
+    /// # Ok::<(), strois::Error>(())
+    /// ```
+    ///
+    #[cfg(feature="aws-region")]
+    pub fn builder_region(region: impl AsRef<awsregion::Region>) -> Builder<MissingCred> {
+        Builder::new_region(region)
+    }
+
     /// /!\ Does not not create the bucket on S3, only instanciates a `Bucket` object
     pub fn bucket(&self, name: impl Into<String>) -> Result<Bucket> {
         Bucket::new(self.clone(), name, self.url_style)
