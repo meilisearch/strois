@@ -50,14 +50,14 @@ impl Bucket {
     /// ```
     /// use strois::Builder;
     ///
-    /// let bucket = Builder::new(awsregion::Region::UsEast1)?
+    /// let bucket = Builder::new("us-east-1".parse()?)?
     ///     .key("minioadmin")
     ///     .secret("minioadmin")
     ///     .bucket("tamo");
     /// # Ok::<(), strois::Error>(())
     /// ```
     #[cfg(feature="aws-region")]
-    pub fn region_builder(region: impl AsRef<awsregion::Region>) -> Builder<MissingCred> {
+    pub fn region_builder(region: awsregion::Region) -> Builder<MissingCred> {
         Builder::new_region(region)
     }
 

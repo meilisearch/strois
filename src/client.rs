@@ -51,7 +51,7 @@ impl Client {
     /// ```
     ///
     #[cfg(feature="aws-region")]
-    pub fn builder_region(region: impl AsRef<awsregion::Region>) -> Builder<MissingCred> {
+    pub fn builder_region(region: awsregion::Region) -> Builder<MissingCred> {
         Builder::new_region(region)
     }
 

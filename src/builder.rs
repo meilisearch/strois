@@ -125,10 +125,10 @@ impl Builder<MissingCred> {
     /// ```
     ///
     #[cfg(feature="aws-region")]
-    pub fn new_region(region: impl AsRef<awsregion::Region>) -> Self {
+    pub fn new_region(region: awsregion::Region) -> Self {
         Self {
-            addr: format!("{}://{}", region.as_ref().scheme(), region.as_ref().endpoint()).parse().unwrap(),
-            region: Some(region.as_ref().to_string()),
+            addr: format!("{}://{}", region.scheme(), region.endpoint()).parse().unwrap(),
+            region: Some(region.to_string()),
             cred: MissingCred,
             url_style: None,
             token: None,
