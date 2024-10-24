@@ -23,9 +23,9 @@ impl Client {
     ///
     /// # Example
     /// ```
-    /// use strois::Builder;
+    /// use strois::Client;
     ///
-    /// let client = Builder::new("http://localhost:9000")?
+    /// let client = Client::builder_region("http://localhost:9000")?
     ///     .key("minioadmin")
     ///     .secret("minioadmin")
     ///     .client();
